@@ -1,0 +1,65 @@
+# Ignore PHP built files
+/vendor/
+/var/
+/node_modules/
+/.env
+.env.local
+/.idea/
+/.phpunit.result.cache
+/.vscode/
+/*.log
+/logs/
+/config/jwt/private.pem
+/config/jwt/public.pem
+/config/secrets/*
+
+# Symfony cache and logs
+/var/cache/
+/var/logs/
+/var/sessions/
+
+# Composer dependencies
+/vendor/
+/composer.lock
+
+# Node.js dependencies
+/node_modules/
+/yarn.lock
+/package-lock.json
+/.npm/
+/.pnpm-debug.log
+
+# Build artifacts
+/public/build/
+/public/bundles/
+/public/css/
+/public/js/
+/public/fonts/
+/public/images/
+/public/uploads/
+
+# PHPStorm project files
+/.idea/
+/.idea_modules/
+
+# Docker files
+/.docker/
+/docker-compose.override.yml
+/.env.docker.local
+
+# Ignore deployment files
+/deploy/
+/.capistrano/
+/*.phar
+
+# Miscellaneous
+/.DS_Store
+/.env.local.php
+/tests/_output/
+/tests/_support/_generated/
+
+# Ignore cache for database tools
+/.phpunit.result.cache
+
+# Ignore Symfony flex recipes lock file (useful to avoid conflicts)
+.symfony.lock

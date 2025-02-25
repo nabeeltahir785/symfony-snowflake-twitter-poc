@@ -1,0 +1,113 @@
+version: '3.8'
+
+# Define custom networks for better isolation
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+
+services:
+  # Nginx service for handling HTTP requests
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: snowflake_nginx
+    restart: unless-stopped
+    volumes:
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+      - ./public:/var/www/html/public:ro
+    depends_on:
+      - php
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - frontend
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PHP service for the Symfony application
+  php:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: snowflake_php
+    restart: unless-stopped
+    volumes:
+      - ./:/var/www/html:cached
+      - ./docker/php/php.ini:/usr/local/etc/php/php.ini:ro
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - frontend
+      - backend
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      APP_SECRET: ${APP_SECRET}
+      DATABASE_URL: ${DATABASE_URL}
+      MESSENGER_TRANSPORT_DSN: ${MESSENGER_TRANSPORT_DSN}
+    healthcheck:
+      test: ["CMD", "php", "-v"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL service for database
+  postgres:
+    image: postgres:14-alpine
+    container_name: snowflake_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-symfony}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-symfony}
+      POSTGRES_DB: ${POSTGRES_DB:-snowflake_db}
+      # Add these for improved security
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    ports:
+      # Only expose to localhost in production
+      - "127.0.0.1:5432:5432"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-symfony}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RabbitMQ service for message queue
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: snowflake_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      # Enable plugins
+      RABBITMQ_PLUGINS: rabbitmq_management,rabbitmq_prometheus
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    ports:
+      # Only expose to localhost in production
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
