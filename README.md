@@ -1,14 +1,14 @@
 
 # Snowflake Symfony Application
 
-This repository contains a dockerized Symfony application with PostgreSQL and RabbitMQ.
+A dockerized Symfony application implementing Twitter's Snowflake ID algorithm with PostgreSQL and RabbitMQ.
 
-## Architecture
+## Features
 
-- **PHP/Symfony**: Backend application framework
-- **Nginx**: Web server
-- **PostgreSQL**: Database
-- **RabbitMQ**: Message queue for async processing
+-   Distributed unique 64-bit ID generation (timestamp + node ID + sequence)
+-   Complete Symfony bundle with Doctrine integration
+-   RESTful API and asynchronous processing via RabbitMQ
+-   Production-ready Docker environment
 
 ## Security Features
 
@@ -26,68 +26,47 @@ This repository contains a dockerized Symfony application with PostgreSQL and Ra
 - Docker and Docker Compose installed
 - Git
 
-### Setup
+## Quick Start
 
-1. Clone this repository:
-   ```bash
-   git clone <repository-url>
-   cd snowflake-poc
-   ```
+```bash
+# Clone and setup
+git clone https://github.com/nabeeltahir785/symfony-snowflake-twitter-poc
+cd symfony-snowflake-twitter-poc
+mkdir -p docker/nginx/ssl docker/postgres/init var/log var/cache
+cp .env.docker .env.docker.local
 
-2. Create necessary directories:
-   ```bash
-   mkdir -p docker/nginx/ssl docker/postgres/init var/log var/cache
-   ```
+# Start application
+make up
 
-3. Copy environment file:
-   ```bash
-   cp .env.docker .env.docker.local
-   ```
+```
 
-4. Start the application:
-   ```bash
-   make up
-   ```
-
-## Usage
-
-The application is now running at http://localhost
-
-* PostgreSQL is available at localhost:5432
-* RabbitMQ management UI is at http://localhost:15672
+The application runs at http://localhost with PostgreSQL at localhost:5432 and RabbitMQ UI at http://localhost:15672.
 
 ## Common Commands
 
-Using the Makefile for common operations:
+```bash
+make up              # Start containers
+make down            # Stop containers
+make build           # Rebuild containers
+make logs            # View logs
+make shell           # Access PHP container
+make db-create       # Create database
+make db-migrate      # Run migrations
+make console c=CMD   # Run Symfony console command
+
+```
+
+## Kubernetes Deployment
 
 ```bash
-# Start containers
-make up
+# Using Helm
+helm upgrade --install snowflake-poc ./helm/snowflake-poc --namespace snowflake-poc --create-namespace
 
-# Stop containers
-make down
+# Scale replicas
+kubectl scale --namespace snowflake-poc statefulset/snowflake-poc --replicas=5
 
-# Rebuild containers
-make build
-
-# View logs
-make logs
-
-# Access PHP container shell
-make shell
-
-# Create database
-make db-create
-
-# Run migrations
-make db-migrate
-
-# Clear cache
-make cache-clear
-
-# Run Symfony console commands
-make console c=cache:clear
 ```
+
 
 ## Production Deployment
 
@@ -126,9 +105,7 @@ If you encounter connection issues:
    docker-compose exec php ping postgres
    docker-compose exec php ping rabbitmq
    ```
-
-
-# Snowflake ID Generator - Symfony PoC
+   # Snowflake ID Generator - Symfony PoC
 
 This repository demonstrates a complete implementation of the Snowflake ID algorithm in a Symfony application with PostgreSQL and RabbitMQ. It provides a mature, production-ready architecture for generating distributed unique IDs in a microservices environment.
 
@@ -156,87 +133,3 @@ This structure allows for:
 - **Console Commands**: CLI tools for generating and analyzing Snowflake IDs
 - **Distributed Architecture**: Docker-based setup with proper networking and security
 - **Performance Optimized**: Efficient ID generation with benchmarking tools
-
-
-I've completed a comprehensive Symfony Proof of Concept that implements the Snowflake ID generator algorithm. Let me summarize what we've built:
-
-## Core Snowflake Implementation
-
-1.  **SnowflakeIdGenerator Service**: A complete PHP implementation of Twitter's Snowflake algorithm that generates 64-bit unique IDs composed of timestamp, node ID, and sequence components.
-2.  **Snowflake Bundle**: A reusable Symfony bundle that makes it easy to integrate Snowflake IDs into any Symfony project, with proper dependency injection and configuration.
-3.  **Doctrine Integration**: Custom DBAL type (SnowflakeType) and event subscribers to automatically generate Snowflake IDs for Doctrine entities.
-
-## API and Functionality
-
-1.  **RESTful Product API**: A complete API for product management that uses Snowflake IDs for primary keys.
-2.  **Asynchronous Processing**: Integration with RabbitMQ for message-based asynchronous processing with Snowflake IDs.
-3.  **Console Commands**: Utilities for generating, analyzing, and benchmarking Snowflake IDs from the command line.
-
-## Infrastructure and Best Practices
-
-1.  **Docker Setup**: A secure, production-ready Docker environment with proper network isolation and security configurations.
-2.  **High Availability Design**: Guidelines for deploying Snowflake ID generation in distributed environments with proper node ID allocation.
-3.  **Documentation**: Comprehensive documentation including API reference, deployment guides, and troubleshooting information.
-
-## Key Benefits of Snowflake IDs in This Implementation
-
-1.  **Distributed Generation**: No central coordination needed between nodes/servers
-2.  **Time-Sortable**: IDs are approximately sortable by creation time
-3.  **High Throughput**: Can generate thousands of IDs per second per node
-4.  **No Database Sequence**: Eliminates the performance bottleneck of DB sequences
-5.  **K-Sortable**: IDs from the same timeframe sort near each other
-
-This implementation is production-ready and follows best practices for Symfony development, providing a solid foundation for scaling distributed systems with reliable ID generation.
-
-
-
-## Kubernetes Deployment
-
-The Snowflake ID Generator is designed for distributed deployment using Kubernetes:
-
-### Setup Options
-
-1. **Helm Chart**: Complete Helm chart for deploying the application, PostgreSQL, and RabbitMQ
-   ```bash
-   helm upgrade --install snowflake-poc ./helm/snowflake-poc \
-     --namespace snowflake-poc \
-     --create-namespace
-   ```
-
-2. **Skaffold**: Development workflow for iterating on the application
-   ```bash
-   skaffold dev --profile=dev
-   ```
-
-3. **Kustomize**: Environment-specific configuration
-   ```bash
-   kubectl apply -k kubernetes/
-   ```
-
-### Multi-Node Distribution
-
-The Kubernetes deployment uses a StatefulSet to ensure consistent pod identities:
-
-- Each pod receives a unique Snowflake node ID (via the `SNOWFLAKE_NODE_ID` environment variable)
-- Node IDs are calculated from the pod's ordinal index + a configurable base ID
-- This ensures unique IDs across distributed deployments
-
-### Scaling
-
-```bash
-# Scale to 5 replicas
-kubectl scale --namespace snowflake-poc statefulset/snowflake-poc --replicas=5
-
-# Or use Horizontal Pod Autoscaler (already configured)
-kubectl get hpa --namespace snowflake-poc
-```
-
-### Testing Cross-Node Distribution
-
-A test script is provided to validate ID uniqueness across pods:
-
-```bash
-kubernetes/test-distribution.sh
-```
-
-For more details, see the [Kubernetes README](kubernetes/README.md).
